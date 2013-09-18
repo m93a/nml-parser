@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 nml
 ==
 
@@ -46,3 +47,9 @@ After parsing you will maybe need to export a DOM document. That can be easily d
 var iframe = document.createElement("iframe");
 document.body.appendChild(iframe);
 doc.parse(
+=======
+nml-parser
+==========
+
+Parser of the Namespace Markup Language
+>>>>>>> 7ac8ce0aa974eb4fe1543c68f28d846a6e2aa5ac
