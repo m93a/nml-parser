@@ -7,10 +7,12 @@
  *    "childs" as a shortand for     *
  *    "children".                    *
  * * * * * * * * * * * * * * * * * * */
+//TODO add comment support
+//FIXME no doctype parsing
 
 window.nml = function(){
  this.version = 1;
- this.update  = 0;
+ this.update  = 1;
  this.release = 0;
  this.failonerr = false;
  this.namespaces = [];
@@ -48,7 +50,6 @@ window.nml = function(){
    while(str[i.n]!=">"&&str.substr(i.n,2)!="/>"&&str.length>i.n){//Until the end of the tag
     x=i.n;
     while(!(" =>".indexOf(str[x])+1)){x++;}
-    console.log(str.substring(i.n,x));
     attr.name=str.substring(i.n,x);//Save attribute name
     i.add(x-i.n);
     skipEmpty();
@@ -112,15 +113,16 @@ window.nml = function(){
       i.add(x-i.n);//Move i to x
      }
     }else{
-     this.root.tag = {};
+     this.childs[0] = {};
+     this.childs[0].tag = {};
      if(str.substring(i.n,x).indexOf(":")+1){//With namespace
-      this.root.tag.name  = str.substring(i.n,x).split(":")[1];
-      this.root.tag.space = str.substring(i.n,x).split(":")[0];
+      this.childs[0].tag.name  = str.substring(i.n,x).split(":")[1];
+      this.childs[0].tag.space = str.substring(i.n,x).split(":")[0];
      }else{//Without namespace
-      this.root.tag.name  = str.substring(i.n,x);
+      this.childs[0].tag.name  = str.substring(i.n,x);
      }
      i.add(x-i.n);//Move i to x
-     this.root.attrs = getAttrs();
+     this.childs[0].attrs = getAttrs();
      if(str[i.n]){
       if(str.substring(i.n,i.n+2)=="/>"){
        return;
@@ -170,13 +172,21 @@ window.nml = function(){
       ){
        structure.length--;
       }else{
-       throw {line:line,collumn:col,message:"Bazinga!"};
+       //begin TODO
+       if(this.failonerr){
+        throw {line:line,collumn:col,message:"Bazinga!"};
+       }else{
+        return;
+       }
+       //end TODO
       }
       skipEmpty();
       if(str[i.n]==">"){
        i.add();
       }else{
-       console.log("42");
+       if(this.failonerr){
+        throw {line:line,collumn:col,message:"Unknown error"};
+       }
       }
      }else{
       x = i.n;
@@ -204,7 +214,7 @@ window.nml = function(){
        if(str[i.n]==">"){
         structure[structure.length] = node;
         i.add();
-       }else{
+       }else if(this.failonerr){
         throw {line:line,collumn:col,message:"Unknown error"};
        }
       }else{
@@ -255,7 +265,57 @@ window.nml = function(){
  this.parse.removeEventListener = this.parse.rmon;
  
  this.toDOM = function(){
-  //TODO
+  /*
+   TODO Make a way to define namespace identifier!
+  */
+  var ns = "";
+  if(this.childs[0].tag.space){
+   ns = "/nml/"+this.childs[0].tag.space;
+  }
+  var doc = (new Document()).implementation.createDocument(
+   ns, //Namespace identifier
+   this.childs[0].tag.name, //Set root element's tag name
+   
+   (new Document()).implementation.createDocumentType(
+    this.namespaces[0], //Add a simple doctype
+    "", //No DTD, the same way as in HTML5
+    ""
+   )
+  );
+  
+  //BEGIN Main cycle
+  var f = function(f,e,d,x){
+   var node;
+   if(typeof e == "string"){
+    node = d.createTextNode(e);
+    x.appendChild(node);
+   }else{
+    if(e.tag.space){
+     node = d.createElementNS("/nml/"+e.tag.space,e.tag.name);
+    }else{
+     node = d.createElement(e.tag.name);
+    }
+    var i = 0;
+    for(attr in e.attrs){
+     node.setAttribute(attr,e.attrs[attr]);
+    }
+    x.appendChild(node);
+    var i = 0;
+    while(e.childs.length>i){
+     f(f,e.childs[i],d,node);
+     i++;
+    }
+   }
+  }
+  
+  var i = 0;
+  while(this.childs[0].childs.length>i){
+   f(f,this.childs[0].childs[i],doc,doc.lastChild);
+   i++;
+  }
+  //END Main cycle
+  
+  return doc;
  };
  this.toDOM.events = [];
  this.toDOM.on = function(){

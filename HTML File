@@ -4,6 +4,6 @@
   </head>
   <body>
    <script src="./nml.js"></script>
-   <script>var doc = new nml(); try{doc.parse("<!doctype html><html:html><html:head><html:meta charset=utf-8 /><html:title>Ahoj</html:title></html:html>");} catch(e){console.log(e);} console.log(doc);</script>
+   <script>var doc = new nml(); doc.parse("<!doctype form html><html:html><html:head><html:meta charset=utf-8 /><html:title>Ahoj</html:title></html:head></html:html>"); console.log(doc); console.log(doc.toDOM().lastChild.outerHTML);</script>
   </body>
 </html>
