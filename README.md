@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 nml
 ==
 
@@ -13,7 +12,7 @@ Then, you can change to `failonerr` mode, that stops the parser if an error occu
 ```js
 doc.failonerr = true;
 ```
-And finally you should set up _sandbox_ elements - that ones, which may contain only __one text child__ (such as _html:script_ element in html6)
+And finally you should set up _sandbox_ elements - that ones, which may contain only __one text child__ (such as _html:script_ element in html6) **TODO**
 ```js
 doc.sandbox = [
  {name:"script",space:"html"},
@@ -26,11 +25,11 @@ Now you are ready to parse.
 ##How to parse
 Before the parsing, you have to load your document (via http or from a local file) into a local variable (as a string), then you can call the `parse` function.
 ```js
-var str = "<svg:svg width=100 height=100><g><svg:path d="M0,0 L100,100" /></g></svg:svg>";
+var str = "<svg:svg width=100 height=100><g><svg:path d=\"M0,0 L100,100\" /></g></svg:svg>";
 doc.parse(str);
 console.log(doc.childs[0]);
 ```
-You can also call the parser asynchronously. <!-- TODO -->
+You can also call the parser asynchronously. **TODO**
 ```js
 doc.parse.on("error",function(e){
  console.log(e.line);
@@ -42,14 +41,10 @@ doc.parse.on("success",function(e){
 });
 doc.parse(str,true);
 ```
-After parsing you will maybe need to export a DOM document. That can be easily done using the `toDOM` function. <!-- TODO -->
+After parsing you will maybe need to export a DOM document. That can be easily done using the `toDOM` function. **TODO**
 ```js
 var iframe = document.createElement("iframe");
 document.body.appendChild(iframe);
-doc.parse(
-=======
-nml-parser
-==========
-
-Parser of the Namespace Markup Language
->>>>>>> 7ac8ce0aa974eb4fe1543c68f28d846a6e2aa5ac
+doc.parse(str);
+iframe.contentDocument = doc.toDOM();
+```
