@@ -43,8 +43,7 @@ doc.parse(str,true);
 ```
 After parsing you will maybe need to export a DOM document. That can be easily done using the `toDOM` function. **TODO**
 ```js
-var iframe = document.createElement("iframe");
-document.body.appendChild(iframe);
 doc.parse(str);
-iframe.contentDocument = doc.toDOM();
+node = doc.toDOM().body;
+document.importNode(node,true);
 ```
