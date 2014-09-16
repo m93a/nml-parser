@@ -1,26 +1,22 @@
 /**  * * * * * * * * * * * * * * * * *
  * nml parser 1.0                    *
  * Release: 0                        *
- * * * * * * * * * * * * * * * * * * *
- * NOTE:                             *
- *    Please understand the word     *
- *    "childs" as a shortand for     *
- *    "children".                    *
  * * * * * * * * * * * * * * * * * * */
 //TODO add comment support
 //FIXME no doctype parsing
 
-window.nml = function(){
+window.NMLDocument = function(){
  this.version = 1;
  this.update  = 1;
  this.release = 0;
  this.failonerr = false;
  this.namespaces = [];
  this.sandbox = [];
- this.childs = [];
+ this.children = [];
  this.parse = function(str,async){
   if(async){
    setTimeout(this.parse,0);
+   return;
   }
   //Preparation
   str = str.trim();
@@ -113,16 +109,16 @@ window.nml = function(){
       i.add(x-i.n);//Move i to x
      }
     }else{
-     this.childs[0] = {};
-     this.childs[0].tag = {};
+     this.children[0] = {};
+     this.children[0].tag = {};
      if(str.substring(i.n,x).indexOf(":")+1){//With namespace
-      this.childs[0].tag.name  = str.substring(i.n,x).split(":")[1];
-      this.childs[0].tag.space = str.substring(i.n,x).split(":")[0];
+      this.children[0].tag.name  = str.substring(i.n,x).split(":")[1];
+      this.children[0].tag.space = str.substring(i.n,x).split(":")[0];
      }else{//Without namespace
-      this.childs[0].tag.name  = str.substring(i.n,x);
+      this.children[0].tag.name  = str.substring(i.n,x);
      }
      i.add(x-i.n);//Move i to x
-     this.childs[0].attrs = getAttrs();
+     this.children[0].attrs = getAttrs();
      if(str[i.n]){
       if(str.substring(i.n,i.n+2)=="/>"){
        return;
@@ -142,7 +138,7 @@ window.nml = function(){
     while(str.length>i.n){
      //Add text node
      while(str[x]!="<"&&str.length>x){x++;}
-     if(x!=i.n){structure[structure.length-1].childs[structure[structure.length-1].childs.length]=str.substring(i.n,x); i.add(x-i.n);}
+     if(x!=i.n){structure[structure.length-1].children[structure[structure.length-1].children.length]=str.substring(i.n,x); i.add(x-i.n);}
      if(str.length<=i.n){
       if(this.failonerr){
        throw {line:line,collumn:col,message:"Unexpected end of the document, document does not end with the ending tag of the root."};
@@ -193,8 +189,8 @@ window.nml = function(){
       while((!(" \n\t/>".indexOf(str[x])+1))&&str.length>x) {x++;}
       node = {};
       node.tag = {};
-      node.childs = [];
-      structure[structure.length-1].childs[structure[structure.length-1].childs.length] = node;
+      node.children = [];
+      structure[structure.length-1].children[structure[structure.length-1].children.length] = node;
       if(str.substring(i.n,x).indexOf(":")+1){//With namespace
        node.tag.name  = str.substring(i.n,x).split(":")[1];
        node.tag.space = str.substring(i.n,x).split(":")[0];
@@ -240,7 +236,7 @@ window.nml = function(){
      throw {line:line,collumn:col,message:"Expected '<' at the beginning of the document."};
     }
     while(str[x]!="<"&&str.length>x){x++;}//Get the position of a)the "<" char or b)the end of the document
-    this.childs[0].childs[this.childs[0].childs.length] = str.substring(i.n,x-i.n);//Insert the text into root element
+    this.children[0].children[this.children[0].children.length] = str.substring(i.n,x-i.n);//Insert the text into root element
     i.add(x-i.n);//Move i to x
     if(str.length==x){
      run = false; //If x is the end of the document, do not repeat the cycle
@@ -269,12 +265,12 @@ window.nml = function(){
    TODO Make a way to define namespace identifier!
   */
   var ns = "";
-  if(this.childs[0].tag.space){
-   ns = "/nml/"+this.childs[0].tag.space;
+  if(this.children[0].tag.space){
+   ns = "/nml/"+this.children[0].tag.space;
   }
   var doc = (new Document()).implementation.createDocument(
    ns, //Namespace identifier
-   this.childs[0].tag.name, //Set root element's tag name
+   this.children[0].tag.name, //Set root element's tag name
    
    (new Document()).implementation.createDocumentType(
     this.namespaces[0], //Add a simple doctype
@@ -301,19 +297,27 @@ window.nml = function(){
     }
     x.appendChild(node);
     var i = 0;
-    while(e.childs.length>i){
-     f(f,e.childs[i],d,node);
+    while(e.children.length>i){
+     f(f,e.children[i],d,node);
      i++;
     }
    }
   }
   
   var i = 0;
-  while(this.childs[0].childs.length>i){
-   f(f,this.childs[0].childs[i],doc,doc.lastChild);
+  while(this.children[0].children.length>i){
+   f(f,this.children[0].children[i],doc,doc.lastChild);
    i++;
   }
   //END Main cycle
+  
+  var foo;
+  if(foo = doc.getElementsByTagName('head')){
+   ( foo.length==1 )&&( doc.head = foo[0] );
+  }
+  if(foo = doc.getElementsByTagName('body')){
+   ( foo.length==1 )&&( doc.body = foo[0] );
+  }
   
   return doc;
  };
