@@ -1,18 +1,100 @@
-/**  * * * * * * * * * * * * * * * * *
- * nml parser 1.0                    *
- * Release: 0                        *
- * * * * * * * * * * * * * * * * * * */
-//TODO add comment support
-//FIXME no doctype parsing
 
+//TODO add comment support
+
+
+//NMLElement
+window.NMLElement = function(doc,name,space){
+ if(!this instanceof NMLElement){
+  return new NMLElement(doc,name,space);
+ };
+ this.tag = {name:name,space:space};
+ this.children = [];
+ this.ownerDocument = doc;
+ this.parent = null;
+ this.nthChild = null;
+ 
+ 
+ this.getNamespace = function(){
+  return doc.namespaces[this.tag.space] || '/nml';
+ };
+ 
+ this.appendChild = function(node){
+  if(!node instanceof NMLElement){
+   throw Error("Argument 1 does not implement NMLElement");
+  }
+  node.parent = this;
+  node.nthChild = this.children.length;
+  this.children.push(node);
+  doc.trigObserver('add',{
+   target: node,
+   parent: this
+  });
+ };
+ 
+ this.remove = function(){
+  doc.trigObserver('rm',{
+   target: this,
+   parent: this.parent
+  });
+  this.parent.children[this.nthChild] = null;
+  this.parent = null;
+ };
+};
+
+
+//NMLDocument
 window.NMLDocument = function(){
- this.version = 1;
- this.update  = 1;
- this.release = 0;
  this.failonerr = false;
- this.namespaces = [];
+ this.namespaces = {
+  'html': "http://www.w3.org/1999/xhtml"
+ };
  this.sandbox = [];
  this.children = [];
+ 
+ this.createElement = function(name,space){
+  return new NMLElement(this,name,space);
+ };
+ this.appendChild = function(node){
+  if(!node instanceof NMLElement){
+   throw Error("Argument 1 does not implement Node");
+  }
+  node.parent = this;
+  node.nthChild = this.children.length;
+  this.children.push(node);
+  this.trigObserver('add',{
+   target: node,
+   parent: this
+  });
+ };
+ 
+ this.observe = function(what,listener){
+  if(!what in this.observers){throw Error('No such event');}
+  this.observers[what].push(listener);
+ };
+ this.unobserve = function(what,listener){
+  if(!what in this.observers){throw Error('No such event');}
+  var arr = this.observers[what];
+  var i = arr.indexOf(listener);
+  ( i > -1 )&&( arr.slice(i,i+1) );
+ };
+ this.trigObserver = function(what,props){
+  if(!what in this.observers){throw Error('No such event');}
+  var self = this;
+  setTimeout(function(){
+   var arr = self.observers[what];
+   var i=-1, l=arr.length;
+   while(++i<l){
+    arr[i](props);
+   }
+  },0);
+ };
+ this.observers = {
+  'add':[],
+  'rm':[],
+  'attr':[]
+ };
+ 
+ 
  this.parse = function(str,async){
   if(async){
    setTimeout(this.parse,0);
@@ -103,20 +185,27 @@ window.NMLDocument = function(){
       skipEmpty();
       x=i.n;
       while(!(" \n\t,>".indexOf(str[x])+1)){x++;}
-      if(str.substring(i.n,x)){
-       this.namespaces[this.namespaces.length]=str.substring(i.n,x);
+      if(
+       str.substring(i.n,x) &&
+       !this.namespaces[str.substring(i.n,x)]
+      ){
+       this.namespaces[str.substring(i.n,x)]='/nml/'+str.substring(i.n,x);
       }
       i.add(x-i.n);//Move i to x
      }
     }else{
-     this.children[0] = {};
-     this.children[0].tag = {};
+     
+     i.add();
      if(str.substring(i.n,x).indexOf(":")+1){//With namespace
-      this.children[0].tag.name  = str.substring(i.n,x).split(":")[1];
-      this.children[0].tag.space = str.substring(i.n,x).split(":")[0];
+      node = this.createElement(
+       str.substring(i.n,x).split(":")[0],
+       str.substring(i.n,x).split(":")[1]
+      );
      }else{//Without namespace
-      this.children[0].tag.name  = str.substring(i.n,x);
+      node = this.createElement(str.substring(i.n,x));
      }
+     this.appendChild(node);
+     
      i.add(x-i.n);//Move i to x
      this.children[0].attrs = getAttrs();
      if(str[i.n]){
@@ -138,10 +227,18 @@ window.NMLDocument = function(){
     while(str.length>i.n){
      //Add text node
      while(str[x]!="<"&&str.length>x){x++;}
-     if(x!=i.n && structure[structure.length-1] != this){
+     if(x!=i.n){
+      structure.lenght-1 &&         //if active node != document
       structure[structure.length-1]
-       .children[ structure[structure.length-1].children.length ]
-        = str.substring(i.n,x);
+       .children.push(
+        str.substring(i.n,x)
+       );
+      
+      this.trigObserver('add',{
+       target: str.substring(i.n,x),
+       parent: structure[structure.length-1]
+      });
+      
       i.add(x-i.n);
      }
      if(str.length<=i.n){
@@ -158,6 +255,7 @@ window.NMLDocument = function(){
       i.add();
       x = i.n;
       while((!(">".indexOf(str[x])+1))&&str.length>x) {x++;}
+      
       node = {};
       node.tag = {};
       if(str.substring(i.n,x).indexOf(":")+1){//With namespace
@@ -192,28 +290,30 @@ window.NMLDocument = function(){
      }else{
       x = i.n;
       while((!(" \n\t/>".indexOf(str[x])+1))&&str.length>x) {x++;}
-      node = {};
-      node.tag = {};
-      node.children = [];
-      structure[structure.length-1].children[structure[structure.length-1].children.length] = node;
+      
       if(str.substring(i.n,x).indexOf(":")+1){//With namespace
-       node.tag.name  = str.substring(i.n,x).split(":")[1];
-       node.tag.space = str.substring(i.n,x).split(":")[0];
+       node = this.createElement(
+        str.substring(i.n,x).split(":")[1],
+        str.substring(i.n,x).split(":")[0]
+       );
       }else{//Without namespace
-       node.tag.name  = str.substring(i.n,x);
+       node = this.createElement(str.substring(i.n,x));
       }
+      structure[structure.length-1].children[structure[structure.length-1].children.length] = node;
       skipEmpty();
       
       //Parse attributes
       i.add(x-i.n);//Move i to x
       node.attrs = getAttrs();
       
+      structure[structure.length-1].appendChild(node);
+      
       //End the tag
       if(str.substr(i.n,2)=="/>"){
        i.add(2);
       }else if(str[i.n]){
        if(str[i.n]==">"){
-        structure[structure.length] = node;
+        structure.push(node);
         i.add();
        }else if(this.failonerr){
         throw {line:line,collumn:col,message:"Unknown error"};
@@ -265,14 +365,9 @@ window.NMLDocument = function(){
  };
  this.parse.removeEventListener = this.parse.rmon;
  
- this.toDOM = function(){
-  /*
-   TODO Make a way to define namespace identifier!
-  */
-  var ns = "";
-  if(this.children[0].tag.space){
-   ns = "/nml/"+this.children[0].tag.space;
-  }
+ this.toDOM = function(doc){
+  var ns = "/nml/"+this.children[0].getNamespace();
+  
   var doc = (new Document()).implementation.createDocument(
    ns, //Namespace identifier
    this.children[0].tag.name, //Set root element's tag name
@@ -293,7 +388,7 @@ window.NMLDocument = function(){
    }else{
     if(e.tag.space){
      if(e.tag.space = 'html'){
-      node = d.createElementNS("http://www.w3.org/1999/xhtml",e.tag.name);
+      node = d.createElementNS(this.htmlns,e.tag.name);
      }else{
       node = d.createElementNS("/nml/"+e.tag.space,e.tag.name);
      }
@@ -320,13 +415,6 @@ window.NMLDocument = function(){
   }
   //END Main cycle
   
-  var foo;
-  if(foo = doc.getElementsByTagName('head')){
-   ( foo.length==1 )&&( doc.head = foo[0] );
-  }
-  if(foo = doc.getElementsByTagName('body')){
-   ( foo.length==1 )&&( doc.body = foo[0] );
-  }
   
   return doc;
  };
