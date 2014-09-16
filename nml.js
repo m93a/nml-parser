@@ -138,7 +138,12 @@ window.NMLDocument = function(){
     while(str.length>i.n){
      //Add text node
      while(str[x]!="<"&&str.length>x){x++;}
-     if(x!=i.n){structure[structure.length-1].children[structure[structure.length-1].children.length]=str.substring(i.n,x); i.add(x-i.n);}
+     if(x!=i.n && structure[structure.length-1] != this){
+      structure[structure.length-1]
+       .children[ structure[structure.length-1].children.length ]
+        = str.substring(i.n,x);
+      i.add(x-i.n);
+     }
      if(str.length<=i.n){
       if(this.failonerr){
        throw {line:line,collumn:col,message:"Unexpected end of the document, document does not end with the ending tag of the root."};
@@ -287,9 +292,13 @@ window.NMLDocument = function(){
     x.appendChild(node);
    }else{
     if(e.tag.space){
-     node = d.createElementNS("/nml/"+e.tag.space,e.tag.name);
+     if(e.tag.space = 'html'){
+      node = d.createElementNS("http://www.w3.org/1999/xhtml",e.tag.name);
+     }else{
+      node = d.createElementNS("/nml/"+e.tag.space,e.tag.name);
+     }
     }else{
-     node = d.createElement(e.tag.name);
+     node = d.createElementNS('/nml',e.tag.name);
     }
     var i = 0;
     for(attr in e.attrs){
